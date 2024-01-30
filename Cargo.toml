@@ -1,0 +1,20 @@
+[package]
+name = "litex-bridge"
+version = "0.1.0"
+edition = "2021"
+description = "Helpers for controlling LiteX SoCs via. wishbone-bridge"
+
+[dependencies]
+serde = { version = "1.0.196", features = ["derive"] }
+thiserror = "1.0.56"
+wishbone-bridge = { version = "1.1.0", default-features = false }
+
+[dev-dependencies]
+anyhow = "1.0.79"
+clap = { version = "4.4.18", features = ["derive"] }
+serde_json = "1.0.113"
+# Leave the features on in this version.
+wishbone-bridge = "1.1.0"
+
+[patch.crates-io]
+wishbone-bridge = { git = "https://github.com/Liamolucko/wishbone-utils", branch = "impl-std-error" }
