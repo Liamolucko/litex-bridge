@@ -249,7 +249,7 @@ macro_rules! csr_struct {
                         )*
                     })
                 }
-                fn backed_by(bridge: &'a Bridge, addrs: Self::Addrs) -> Self {
+                fn backed_by(bridge: &'a $crate::wishbone_bridge::Bridge, addrs: Self::Addrs) -> Self {
                     Self {
                         bridge,
                         $($field_name: addrs.$field_name,)*
