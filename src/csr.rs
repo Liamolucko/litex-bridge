@@ -237,7 +237,7 @@ macro_rules! csr_struct {
 
             impl<$lifetime> $crate::csr::CsrGroup<$lifetime> for $name<$lifetime> {
                 type Addrs = $name<$lifetime, ()>;
-                fn addrs(soc_info: &$crate::SocInfo, csr_only: $crate::std::primitive::bool, module: &$crate::std::primitive::str) -> $crate::std::result::Result<Self::Addrs, $crate::wishbone_bridge::BridgeError> {
+                fn addrs(soc_info: &$crate::SocInfo, csr_only: $crate::std::primitive::bool, module: &$crate::std::primitive::str) -> $crate::std::result::Result<Self::Addrs, $crate::Error> {
                     Ok($name {
                         bridge: (),
                         $(
