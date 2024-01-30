@@ -232,16 +232,16 @@ macro_rules! csr_struct {
             #[derive($crate::std::clone::Clone, $crate::std::marker::Copy)]
             $vis struct $name<$lifetime, T = &$lifetime $crate::wishbone_bridge::Bridge> {
                 bridge: T,
-                $($field_name: <$field_ty as $crate::csr::CsrGroup<$lifetime>>::Addrs,)*
+                $($field_name: <$field_ty as $crate::CsrGroup<$lifetime>>::Addrs,)*
             }
 
-            impl<$lifetime> $crate::csr::CsrGroup<$lifetime> for $name<$lifetime> {
+            impl<$lifetime> $crate::CsrGroup<$lifetime> for $name<$lifetime> {
                 type Addrs = $name<$lifetime, ()>;
                 fn addrs(soc_info: &$crate::SocInfo, csr_only: $crate::std::primitive::bool, module: &$crate::std::primitive::str) -> $crate::std::result::Result<Self::Addrs, $crate::Error> {
                     Ok($name {
                         bridge: (),
                         $(
-                            $field_name: <$field_ty as $crate::csr::CsrGroup>::addrs(
+                            $field_name: <$field_ty as $crate::CsrGroup>::addrs(
                                 soc_info,
                                 csr_only,
                                 &$crate::std::format!("{}_{}", module, $crate::std::stringify!($field_name))
@@ -261,7 +261,7 @@ macro_rules! csr_struct {
                 $(
                     $(#[$field_attr])*
                     $vis fn $field_name(&self) -> $field_ty {
-                        <$field_ty as $crate::csr::CsrGroup<$lifetime>>::backed_by(&self.bridge, self.$field_name)
+                        <$field_ty as $crate::CsrGroup<$lifetime>>::backed_by(&self.bridge, self.$field_name)
                     }
                 )*
             }
