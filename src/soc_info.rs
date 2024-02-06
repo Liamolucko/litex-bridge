@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
@@ -13,13 +12,13 @@ use serde::{Deserialize, Serialize};
 /// You can also create the JSON file by passing `csr_json=<filename>` to
 /// `Builder` in Python.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SocInfo<'a> {
+pub struct SocInfo {
     /// A map from the name of every LiteX module that has CSRs to the address
     /// where those CSRs start.
     ///
     /// Those addresses are addresses on the SoC's main bus, which are mapped
     /// directly to addresses in its PCIe BAR 0.
-    pub csr_bases: HashMap<Cow<'a, str>, u32>,
+    pub csr_bases: HashMap<String, u32>,
     /// A map from the name of every CSR in the SoC to information about it.
     ///
     /// The name of a CSR is formatted as `<module>_<submodule1>_..._<csr>`,
@@ -34,14 +33,14 @@ pub struct SocInfo<'a> {
     /// modules are created with `self.add_module("name", module)`, and
     /// submodules are created with `self.name = module`; but I'm not an expert
     /// on Migen/LiteX so I'm not entirely sure.
-    pub csr_registers: HashMap<Cow<'a, str>, CsrInfo>,
+    pub csr_registers: HashMap<String, CsrInfo>,
     /// A map from the names of constants about the SoC to their values.
     ///
     /// `None` is used for boolean constants: not being in the map means
     /// `false`, and `None` means `true`, similar to `#define`s in C.
-    pub constants: HashMap<Cow<'a, str>, Option<SocConstant<'a>>>,
+    pub constants: HashMap<String, Option<SocConstant>>,
     /// A map from the names of regions of the SoC's memory to info about them.
-    pub memories: HashMap<Cow<'a, str>, MemoryRegion<'a>>,
+    pub memories: HashMap<String, MemoryRegion>,
 }
 
 /// Information about an individual CSR.
@@ -87,8 +86,8 @@ impl Display for CsrKind {
 /// integer.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum SocConstant<'a> {
-    String(Cow<'a, str>),
+pub enum SocConstant {
+    String(String),
     // I picked an `i32` for the type here because these constants are also sometimes returned by
     // getter functions in C, and LiteX uses a C `int` as the return value for those functions
     // when the constant is an integer.
@@ -97,7 +96,7 @@ pub enum SocConstant<'a> {
 
 /// Information about a region of the SoC's memory.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MemoryRegion<'a> {
+pub struct MemoryRegion {
     /// The address where the memory region starts.
     ///
     /// Same as [`SocInfo::csr_bases`], these are addresses on the SoC's
@@ -110,10 +109,10 @@ pub struct MemoryRegion<'a> {
     /// This is either `"cached"`, `"io"`, or either of the two with `+linker`
     /// added onto the end.
     #[serde(rename = "type")]
-    pub kind: Cow<'a, str>,
+    pub kind: String,
 }
 
-impl SocInfo<'_> {
+impl SocInfo {
     /// Helper function to retrieve the base address of the SoC's CSR memory
     /// region.
     ///
