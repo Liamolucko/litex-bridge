@@ -27,6 +27,7 @@ pub enum Error {
 /// A handle to a read-only CSR in the SoC.
 pub struct CsrRo<'a, const N: usize = 1> {
     bridge: &'a Bridge,
+    /// The offset in bytes of this CSR.
     offset: u32,
 }
 
@@ -54,6 +55,7 @@ impl<const N: usize> Debug for CsrRo<'_, N> {
 /// A handle to a read-write CSR in the SoC.
 pub struct CsrRw<'a, const N: usize = 1> {
     bridge: &'a Bridge,
+    /// The offset in bytes of this CSR.
     offset: u32,
 }
 
@@ -78,6 +80,71 @@ impl<'a, const N: usize> CsrRw<'a, N> {
 }
 
 impl<const N: usize> Debug for CsrRw<'_, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.read() {
+            Ok(x) => x.fmt(f),
+            Err(_) => f.pad("(error)"),
+        }
+    }
+}
+
+/// A handle to a dynamically-sized, read-only CSR in the SoC.
+pub struct DynCsrRo<'a> {
+    bridge: &'a Bridge,
+    /// The offset in bytes of this CSR.
+    offset: u32,
+    /// The length in `u32`s of this CSR.
+    len: u32,
+}
+
+impl<'a> DynCsrRo<'a> {
+    pub fn read(&self) -> Result<Vec<u32>, BridgeError> {
+        let mut result = Vec::with_capacity(self.len.try_into().unwrap());
+        for i in 0..self.len {
+            result.push(self.bridge.peek(self.offset + 4 * i)?);
+        }
+        Ok(result)
+    }
+}
+
+impl Debug for DynCsrRo<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.read() {
+            Ok(x) => x.fmt(f),
+            Err(_) => f.pad("(error)"),
+        }
+    }
+}
+
+/// A handle to a dynamically-sized, read-write CSR in the SoC.
+pub struct DynCsrRw<'a> {
+    bridge: &'a Bridge,
+    /// The offset in bytes of this CSR.
+    offset: u32,
+    /// The length in `u32`s of this CSR.
+    len: u32,
+}
+
+impl<'a> DynCsrRw<'a> {
+    pub fn read(&self) -> Result<Vec<u32>, BridgeError> {
+        let mut result = Vec::with_capacity(self.len.try_into().unwrap());
+        for i in 0..self.len {
+            result.push(self.bridge.peek(self.offset + 4 * i)?);
+        }
+        Ok(result)
+    }
+
+    pub fn write(&self, value: &[u32]) -> Result<(), BridgeError> {
+        assert_eq!(value.len(), self.len.try_into().unwrap());
+        for i in 0..self.len {
+            self.bridge
+                .poke(self.offset + 4 * i, value[usize::try_from(i).unwrap()])?;
+        }
+        Ok(())
+    }
+}
+
+impl Debug for DynCsrRw<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.read() {
             Ok(x) => x.fmt(f),
@@ -189,6 +256,80 @@ impl<'a, const N: usize> CsrGroup<'a> for CsrRw<'a, N> {
         Self {
             bridge,
             offset: addrs,
+        }
+    }
+}
+
+impl<'a> CsrGroup<'a> for DynCsrRo<'a> {
+    type Addrs = (u32, u32);
+
+    fn addrs(soc_info: &SocInfo, csr_only: bool, module: &str) -> Result<Self::Addrs, Error> {
+        // We're down to the individual CSR now, which means there's nothing left to add
+        // on to `module`: it's the final name of the CSR.
+        let info = soc_info
+            .csr_registers
+            .get(module)
+            .ok_or_else(|| Error::MissingCsr {
+                csr: module.to_owned(),
+            })?;
+
+        if info.kind != CsrKind::ReadOnly {
+            return Err(Error::CsrWrongKind {
+                csr: module.to_owned(),
+                expected: CsrKind::ReadOnly,
+                found: info.kind,
+            });
+        }
+
+        let mut addr = info.addr;
+        if csr_only {
+            addr -= soc_info.csr_base()?;
+        }
+        Ok((addr, info.size))
+    }
+
+    fn backed_by(bridge: &'a Bridge, addrs: Self::Addrs) -> Self {
+        Self {
+            bridge,
+            offset: addrs.0,
+            len: addrs.1,
+        }
+    }
+}
+
+impl<'a> CsrGroup<'a> for DynCsrRw<'a> {
+    type Addrs = (u32, u32);
+
+    fn addrs(soc_info: &SocInfo, csr_only: bool, module: &str) -> Result<Self::Addrs, Error> {
+        // We're down to the individual CSR now, which means there's nothing left to add
+        // on to `module`: it's the final name of the CSR.
+        let info = soc_info
+            .csr_registers
+            .get(module)
+            .ok_or_else(|| Error::MissingCsr {
+                csr: module.to_owned(),
+            })?;
+
+        if info.kind != CsrKind::ReadWrite {
+            return Err(Error::CsrWrongKind {
+                csr: module.to_owned(),
+                expected: CsrKind::ReadWrite,
+                found: info.kind,
+            });
+        }
+
+        let mut addr = info.addr;
+        if csr_only {
+            addr -= soc_info.csr_base()?;
+        }
+        Ok((addr, info.size))
+    }
+
+    fn backed_by(bridge: &'a Bridge, addrs: Self::Addrs) -> Self {
+        Self {
+            bridge,
+            offset: addrs.0,
+            len: addrs.1,
         }
     }
 }
